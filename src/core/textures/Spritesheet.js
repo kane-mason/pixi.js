@@ -181,6 +181,7 @@ export default class Spritesheet
      */
     _processFrames(initialFrameIndex)
     {
+        const meta = this.data.meta;
         let frameIndex = initialFrameIndex;
         const maxFrames = Spritesheet.BATCH_SIZE;
         const sourceScale = this.baseTexture.sourceScale;
@@ -243,6 +244,35 @@ export default class Spritesheet
                     data.rotated ? 2 : 0,
                     data.anchor
                 );
+
+                if (data.vertices)
+                {
+                    const vertices = new Float32Array(data.vertices.length * 2);
+
+                    for (let i = 0; i < data.vertices.length; i++)
+                    {
+                        vertices[i * 2] = Math.floor(data.vertices[i][0] * sourceScale) / this.resolution;
+                        vertices[(i * 2) + 1] = Math.floor(data.vertices[i][1] * sourceScale) / this.resolution;
+                    }
+
+                    const uvs = new Float32Array(data.verticesUV.length * 2);
+
+                    for (let i = 0; i < data.verticesUV.length; i++)
+                    {
+                        uvs[i * 2] = data.verticesUV[i][0] / meta.size.w;
+                        uvs[(i * 2) + 1] = data.verticesUV[i][1] / meta.size.h;
+                    }
+
+                    const indices = new Uint16Array(data.triangles.length * 3);
+                    for (let i = 0; i < data.triangles.length; i++)
+                    {
+                        indices[i * 3] = data.triangles[i][0];
+                        indices[(i * 3) + 1] = data.triangles[i][1];
+                        indices[(i * 3) + 2] = data.triangles[i][2];
+                    }
+
+                    this.textures[i].polygon = new TexturePolygon(vertices, uvs, indices);
+                }
 
                 // lets also add the frame to pixi's global cache for fromFrame and fromImage functions
                 Texture.addToCache(this.textures[i], i);

@@ -193,17 +193,19 @@ export default class Sprite extends Container
      */
     calculateVertices()
     {
-        if (this._transformID === this.transform._worldID && this._textureID === this._texture._updateID)
+        const transform = this.transform;
+        const texture = this._texture;
+
+        if (this._transformID === transform._worldID && this._textureID === texture._updateID)
         {
             return;
         }
 
-        this._transformID = this.transform._worldID;
-        this._textureID = this._texture._updateID;
+        this._transformID = transform._worldID;
+        this._textureID = texture._updateID;
 
         // set the vertex data
 
-        const texture = this._texture;
         const wt = this.transform.worldTransform;
         const a = wt.a;
         const b = wt.b;
@@ -211,50 +213,81 @@ export default class Sprite extends Container
         const d = wt.d;
         const tx = wt.tx;
         const ty = wt.ty;
-        const vertexData = this.vertexData;
-        const trim = texture.trim;
-        const orig = texture.orig;
         const anchor = this._anchor;
+        const orig = texture.orig;
 
-        let w0 = 0;
-        let w1 = 0;
-        let h0 = 0;
-        let h1 = 0;
-
-        if (trim)
+        if (texture.polygon)
         {
-            // if the sprite is trimmed and is not a tilingsprite then we need to add the extra
-            // space before transforming the sprite coords.
-            w1 = trim.x - (anchor._x * orig.width);
-            w0 = w1 + trim.width;
+            this.uvs = texture.polygon.uvs;
+            this.indices = texture.polygon.indices;
 
-            h1 = trim.y - (anchor._y * orig.height);
-            h0 = h1 + trim.height;
+            const vertices = texture.polygon.vertices;
+            const n = vertices.length;
+
+            if (this.vertexData.length !== n)
+            {
+                this.vertexData = new Float32Array(n);
+            }
+
+            const vertexData = this.vertexData;
+
+            const dx = -(anchor._x * orig.width);
+            const dy = -(anchor._y * orig.height);
+
+            for (let i = 0; i < n; i += 2)
+            {
+                const x = vertices[i] + dx;
+                const y = vertices[i + 1] + dy;
+
+                vertexData[i] = x * a + y * c + tx;
+                vertexData[i + 1] = x * b + y * d + ty;
+            }
         }
         else
         {
-            w1 = -anchor._x * orig.width;
-            w0 = w1 + orig.width;
+            const vertexData = this.vertexData;
+            const trim = texture.trim;
 
-            h1 = -anchor._y * orig.height;
-            h0 = h1 + orig.height;
+            let w0 = 0;
+            let w1 = 0;
+            let h0 = 0;
+            let h1 = 0;
+
+            if (trim)
+            {
+                // if the sprite is trimmed and is not a tilingsprite then we need to add the extra
+                // space before transforming the sprite coords.
+                w1 = trim.x - (anchor._x * orig.width);
+                w0 = w1 + trim.width;
+
+                h1 = trim.y - (anchor._y * orig.height);
+                h0 = h1 + trim.height;
+            }
+            else
+            {
+                w1 = -anchor._x * orig.width;
+                w0 = w1 + orig.width;
+
+                h1 = -anchor._y * orig.height;
+                h0 = h1 + orig.height;
+            }
+
+            // xy
+            vertexData[0] = (a * w1) + (c * h1) + tx;
+            vertexData[1] = (d * h1) + (b * w1) + ty;
+
+            // xy
+            vertexData[2] = (a * w0) + (c * h1) + tx;
+            vertexData[3] = (d * h1) + (b * w0) + ty;
+
+            // xy
+            vertexData[4] = (a * w0) + (c * h0) + tx;
+            vertexData[5] = (d * h0) + (b * w0) + ty;
+
+            // xy
+            vertexData[6] = (a * w1) + (c * h0) + tx;
+            vertexData[7] = (d * h0) + (b * w1) + ty;
         }
-
-        // xy
-        vertexData[0] = (a * w1) + (c * h1) + tx;
-        vertexData[1] = (d * h1) + (b * w1) + ty;
-
-        // xy
-        vertexData[2] = (a * w0) + (c * h1) + tx;
-        vertexData[3] = (d * h1) + (b * w0) + ty;
-
-         // xy
-        vertexData[4] = (a * w0) + (c * h0) + tx;
-        vertexData[5] = (d * h0) + (b * w0) + ty;
-
-        // xy
-        vertexData[6] = (a * w1) + (c * h0) + tx;
-        vertexData[7] = (d * h0) + (b * w1) + ty;
     }
 
     /**
@@ -346,11 +379,12 @@ export default class Sprite extends Container
      */
     _calculateBounds()
     {
+        const polygon = this._texture.polygon;
         const trim = this._texture.trim;
         const orig = this._texture.orig;
 
         // First lets check to see if the current texture has a trim..
-        if (!trim || (trim.width === orig.width && trim.height === orig.height))
+        if (!polygon && (!trim || (trim.width === orig.width && trim.height === orig.height)))
         {
             // no trim! lets use the usual calculations..
             this.calculateVertices();
