@@ -1,4 +1,4 @@
-import { Rectangle, Texture } from '../';
+import { Rectangle, Texture, TexturePolygon } from '../';
 import { getResolutionOfUrl } from '../utils';
 
 /**
